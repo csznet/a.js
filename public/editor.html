@@ -1,0 +1,101 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+    <title>Test</title>
+    <link rel="icon" href="data:," />
+    <style>
+        body {
+            text-align: center;
+        }
+
+        div[contenteditable="true"] {
+            cursor: text;
+            width: 800px;
+            max-width: 100%;
+            height: 400px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            margin: 10px auto;
+            padding: 10px;
+            text-align: left;
+            vertical-align: middle;
+            line-height: 1.5;
+            font-family: Arial, Microsoft Yahei;
+            font-size: 14px;
+            display: inline-block;
+            word-break: break-all;
+            white-space: break-spaces;
+            overflow-wrap: break-word;
+            overflow-anchor: none;
+            overflow: auto;
+        }
+
+        div[contenteditable="true"] img {
+            cursor: pointer;
+            max-width: 100%;
+        }
+
+        ._editor_file_wait,
+        ._editor_file_fail,
+        ._editor_file_done {
+            margin: -0.1em 2px;
+            padding: 0.1em;
+            border-radius: 0.1em;
+            outline: 1px dashed black;
+            outline-offset: -1px;
+            vertical-align: middle;
+            opacity: 0.5;
+        }
+
+        ._editor_file_wait {
+            background: linear-gradient(90deg, DarkOrange 100%, currentcolor) no-repeat;
+            background-size: 0%;
+        }
+
+        ._editor_file_fail {
+            background: Red;
+        }
+
+        ._editor_file_done {
+            background: MediumSeaGreen;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="javascript:Editor.pick();">Pick</a>
+    <a href="javascript:Editor.undo();">Undo</a>
+    <a href="javascript:Editor.redo();">Redo</a>
+    <a href="javascript:Editor.sweep();">Sweep</a>
+    <br />
+    <div contenteditable="true"></div>
+    <script src="editor.js"></script>
+    <script>
+        window.addEventListener("load", () => {
+            Editor.set = {
+                "upRemote": "https://api.escuelajs.co/api/v1/files/test.fetch",
+                "upFile": "https://api.escuelajs.co/api/v1/files/upload",
+                "upPre": (act, xhr, obj) => {
+                    const pre = new FormData();
+                    if (act === "file") {
+                        pre.append("file", obj);
+                    } else {
+                        pre.append("url", obj.url);
+                    }
+                    return pre;
+                },
+                "upEnd": (act, xhr, doms) => {
+                    doms.forEach(dom => dom.onclick = () => {
+                        console.log(xhr);
+                    });
+                },
+            }
+            Editor.watch('div[contenteditable=true]');
+        });
+    </script>
+</body>
+
+</html>
