@@ -10,8 +10,8 @@ export async function pJump(a: Context) {
         .prepare(`
             SELECT COUNT(*) AS skip
             FROM post
-            WHERE attr = 0 AND land = ? AND time <= ?
-            ORDER BY attr ASC land ASC time ASC
+            WHERE attr = 0 AND land = ? AND sort <= ?
+            ORDER BY attr ASC, land ASC, sort ASC
         `) // 回复 attr 不可能是 1 置顶
         .get([-tid, time])
     const page = Math.ceil(data.skip / page_size_p)

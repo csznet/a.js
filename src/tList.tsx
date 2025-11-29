@@ -1,57 +1,52 @@
 import { Context } from "hono";
-import { Auth, Config, Pagination } from "./core";
+import { Auth, Config, DB, Pagination } from "./core";
 import { TList } from "../render/TList";
 import { raw } from "hono/html";
 
 export async function tList(a: Context) {
     const i = await Auth(a)
     const page = parseInt(a.req.query('page') ?? '0') || 1
-    const user = await Config.get<number>(a, 'user', true) ?? parseInt(a.req.query('user') ?? '0')
     const land = await Config.get<number>(a, 'land', true) ?? parseInt(a.req.query('land') ?? '0')
-    const land_comb = (!user && [0, 4].includes(land)) ? land : null; // 未指定用户和版块时 使用全局动态排序
     const page_size_t = await Config.get<number>(a, 'page_size_t') || 20
-    const where = and(
-        inArray(Post.attr, [0, 1]),
-        ...(land_comb === null ?
-            [user ? eq(Post.user, user) : undefined, eq(Post.land, land)]
-            :
-            [eq(Post.call, land_comb)]
-
-        )
-    )
-    const total = (await DB(a)
-        .select({ total: count() })
-        .from(Post)
-        .where(where)
-    )?.[0]?.total ?? 0
-    const LastPost = alias(Post, 'LastPost')
-    const LastUser = alias(User, 'LastUser')
-    const data = total ? await DB(a)
-        .select({
-            ...getColumns(Post),
-            name: User.name,
-            grade: User.grade,
-            credits: User.credits,
-            last_time: LastPost.time,
-            last_name: LastUser.name,
-            last_grade: LastUser.grade,
-            last_credits: LastUser.credits,
-        })
-        .from(Post)
-        .where(where)
-        .leftJoin(User, eq(User.uid, Post.user))
-        .leftJoin(LastPost, eq(LastPost.pid, Post.refer_pid))
-        .leftJoin(LastUser, eq(LastUser.uid, LastPost.user))
-        .orderBy(desc(Post.attr),
-            ...(land_comb === null ?
-                [user ? desc(Post.user) : undefined, desc(Post.land), desc(Post.time)]
-                    .filter(v => v !== undefined) // orderBy 需要自己过滤 undefined
-                :
-                [desc(Post.call), desc(Post.sort)]
-            ))
-        .offset((page - 1) * page_size_t)
-        .limit(page_size_t)
-        : []
+    const total = await DB.db
+        .prepare(`
+            SELECT count(*) AS total
+            FROM post
+            WHERE attr IN (0,1)
+            AND `+ (land ? `land` : `call`) + ` = ?
+        `)
+        .get([land]) ?? 0
+    const data = total ? await DB.db
+        .prepare(`
+            SELECT
+                post.*,
+                user.name AS name,
+                user.grade AS grade,
+                user.credits AS credits,
+                last_post.sort AS last_time,
+                last_user.name AS last_name,
+                last_user.grade AS last_grade,
+                last_user.credits AS last_credits
+            FROM post
+            LEFT JOIN user
+                ON user.uid = post.user
+            LEFT JOIN (
+                SELECT user, sort
+                FROM post
+                WHERE attr = 0
+                ORDER BY attr DESC, land DESC, sort DESC
+                LIMIT 1
+            ) AS last_post
+                ON last_post.land = -post.pid
+            LEFT JOIN user AS last_user
+                ON last_user.uid = last_post.user
+            WHERE attr IN (0,1)
+            AND `+ (land ? `land` : `call`) + ` = ?
+            ORDER BY attr DESC, `+ (land ? `land` : `call`) + ` DESC, sort DESC
+            OFFSET ?
+            LIMIT ?
+        `)
+        .all([land, (page - 1) * page_size_t, page_size_t]) : []
     const pagination = Pagination(page_size_t, total, page, 2)
     const title = raw(await Config.get<string>(a, 'site_name', false))
     return a.html(TList(a, { i, page, pagination, data, title }))

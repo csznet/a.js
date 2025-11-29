@@ -55,8 +55,7 @@ export async function pList(a: Context) {
             ORDER BY post.attr ASC, post.land ASC, post.time ASC
             LIMIT ? OFFSET ?;
         `)
-        .all([-tid, (page - 1) * page_size_p, page_size_p])
-        : []
+        .all([-tid, (page - 1) * page_size_p, page_size_p]) : []
     const pagination = Pagination(page_size_p, total, page, 2)
     const title = raw(await HTMLText(thread.content, 140, true))
     const thread_lock = [1, 2].includes(thread.land) && (a.get('time') > (thread.sort + 604800))
