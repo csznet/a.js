@@ -23,7 +23,7 @@ export async function tList(a: Context) {
                 user.name AS name,
                 user.grade AS grade,
                 user.credits AS credits,
-                last_post.sort AS last_time,
+                last_post.last AS last_time,
                 last_user.name AS last_name,
                 last_user.grade AS last_grade,
                 last_user.credits AS last_credits
@@ -31,20 +31,18 @@ export async function tList(a: Context) {
             LEFT JOIN user
                 ON user.uid = post.user
             LEFT JOIN (
-                SELECT user, sort
+                SELECT user, land, MAX(sort) AS last
                 FROM post
                 WHERE attr = 0
-                ORDER BY attr DESC, land DESC, sort DESC
-                LIMIT 1
+                GROUP BY land
             ) AS last_post
                 ON last_post.land = -post.pid
             LEFT JOIN user AS last_user
                 ON last_user.uid = last_post.user
-            WHERE attr IN (0,1)
-            AND `+ (land ? `land` : `call`) + ` = ?
-            ORDER BY attr DESC, `+ (land ? `land` : `call`) + ` DESC, sort DESC
-            OFFSET ?
-            LIMIT ?
+            WHERE post.attr IN (0,1)
+            AND `+ (land ? `post.land` : `post.call`) + ` = ?
+            ORDER BY post.attr DESC, `+ (land ? `post.land` : `post.call`) + ` DESC, post.sort DESC
+            LIMIT ?,?
         `)
         .all([land, (page - 1) * page_size_t, page_size_t]) : []
     const pagination = Pagination(page_size_t, total, page, 2)
