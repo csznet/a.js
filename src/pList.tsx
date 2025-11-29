@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { and, eq, inArray, ne, sql, asc, getTableColumns, gt, count } from "drizzle-orm";
+import { and, eq, inArray, ne, sql, asc, getColumns, gt, count } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { DB, Post, User } from "./base";
 import { Auth, Config, Pagination, HTMLText } from "./core";
@@ -13,7 +13,7 @@ export async function pList(a: Context) {
     const QuoteUser = alias(User, 'QuoteUser')
     const thread = (await DB(a)
         .select({
-            ...getTableColumns(Post),
+            ...getColumns(Post),
             name: User.name,
             grade: User.grade,
             credits: User.credits,
@@ -42,7 +42,7 @@ export async function pList(a: Context) {
     )?.[0]?.total ?? 0
     const data = total ? await DB(a)
         .select({
-            ...getTableColumns(Post),
+            ...getColumns(Post),
             name: User.name,
             grade: User.grade,
             credits: User.credits,

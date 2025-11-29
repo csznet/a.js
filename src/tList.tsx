@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { and, count, desc, eq, getTableColumns, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, getColumns, inArray } from 'drizzle-orm';
 import { alias } from "drizzle-orm/sqlite-core";
 import { DB, Post, User } from "./base";
 import { Auth, Config, Pagination } from "./core";
@@ -31,7 +31,7 @@ export async function tList(a: Context) {
     const LastUser = alias(User, 'LastUser')
     const data = total ? await DB(a)
         .select({
-            ...getTableColumns(Post),
+            ...getColumns(Post),
             name: User.name,
             grade: User.grade,
             credits: User.credits,
