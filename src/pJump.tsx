@@ -1,6 +1,4 @@
 import { Context } from "hono";
-import { and, eq, count, lte, asc } from "drizzle-orm";
-import { DB, Post } from "./base";
 import { Config } from "./core";
 
 export async function pJump(a: Context) {

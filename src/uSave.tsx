@@ -1,7 +1,5 @@
 import { Context } from "hono";
-import { eq } from "drizzle-orm";
 import { Md5 } from "ts-md5";
-import { DB, User } from "./base";
 import { Auth } from "./core";
 
 export async function uSave(a: Context) {

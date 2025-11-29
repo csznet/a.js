@@ -1,9 +1,7 @@
 import { Context } from "hono";
 import { sign } from "hono/jwt";
 import { setCookie } from "hono/cookie";
-import { eq, or } from "drizzle-orm";
 import { Md5 } from "ts-md5";
-import { DB, User } from "./base";
 import { Config } from "./core";
 
 

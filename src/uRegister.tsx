@@ -2,7 +2,6 @@ import { Context } from "hono";
 import { sign } from "hono/jwt";
 import { setCookie } from "hono/cookie";
 import { Md5 } from "ts-md5";
-import { DB, User } from "./base";
 import { Config, RandomString } from "./core";
 
 export async function uRegister(a: Context) {

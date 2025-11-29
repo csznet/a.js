@@ -1,7 +1,4 @@
 import { Context } from "hono";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/sqlite-core";
-import { DB, Post, User } from "./base";
 import { Auth, HTMLFilter } from "./core";
 
 export async function pSave(a: Context) {
@@ -11,7 +8,7 @@ export async function pSave(a: Context) {
     const eid = parseInt(a.req.param('eid') ?? '0')
     const body = await a.req.formData()
     const land = parseInt(body.get('land')?.toString() ?? '0')
-    const land_comb = [4].includes(land) ? land : 0 // call_land 合并至聚合版块 还是独立分版
+    const land_comb = [4].includes(land) ? land : 0 // call 合并至聚合版块 还是独立分版
     if (![1, 2, 3, 4].includes(land)) { return a.text('illegal_land', 403) } // 是否在可选分区内
     const raw = body.get('content')?.toString() ?? ''
     if (eid < 0) { // 编辑
@@ -20,7 +17,7 @@ export async function pSave(a: Context) {
         const post = (await DB(a)
             .update(Post)
             .set({
-                call_land: sql<number>`CASE WHEN ${Post.call_land} > 0 THEN ${land_comb} ELSE ${Post.call_land} END`, // 回帖不能修改引用
+                call: sql<number>`CASE WHEN ${Post.call} > 0 THEN ${land_comb} ELSE ${Post.call} END`, // 回帖不能修改引用
                 land: sql<number>`CASE WHEN ${Post.land} > 0 THEN ${land} ELSE ${Post.land} END`, // 回帖不能修改引用
                 content: content,
             })
@@ -44,7 +41,7 @@ export async function pSave(a: Context) {
                 uid: Post.user,
                 tid: Thread.pid,
                 thread_land: Thread.land, // 引用所在Thread的land>0
-                thread_show_time: Thread.show_time,
+                thread_show_time: Thread.sort,
             })
             .from(Post)
             .where(and(
@@ -63,8 +60,8 @@ export async function pSave(a: Context) {
                 .values({
                     user: i.uid,
                     refer_pid: quote.pid,
-                    call_land: -quote.uid,
-                    show_time: (i.uid == quote.uid) ? 0 : a.get('time'), // 如果回复的是自己则隐藏
+                    call: -quote.uid,
+                    sort: (i.uid == quote.uid) ? 0 : a.get('time'), // 如果回复的是自己则隐藏
                     land: -quote.tid,
                     time: a.get('time'),
                     content,
@@ -75,7 +72,7 @@ export async function pSave(a: Context) {
                 .update(Post)
                 .set({
                     refer_pid: sql<number>`LAST_INSERT_ROWID()`,
-                    show_time: [1, 2, 4].includes(quote.thread_land) ? a.get('time') : Post.show_time, // 回复后顶贴的分区
+                    sort: [1, 2, 4].includes(quote.thread_land) ? a.get('time') : Post.sort, // 回复后顶贴的分区
                 })
                 .where(eq(Post.pid, quote.tid))
             ,
@@ -101,8 +98,8 @@ export async function pSave(a: Context) {
                 .insert(Post)
                 .values({
                     user: i.uid,
-                    call_land: land_comb,
-                    show_time: a.get('time'),
+                    call: land_comb,
+                    sort: a.get('time'),
                     land: land,
                     time: a.get('time'),
                     content,

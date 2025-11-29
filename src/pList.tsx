@@ -1,7 +1,4 @@
 import { Context } from "hono";
-import { and, eq, inArray, ne, sql, asc, getColumns, gt, count } from "drizzle-orm";
-import { alias } from "drizzle-orm/sqlite-core";
-import { DB, Post, User } from "./base";
 import { Auth, Config, Pagination, HTMLText } from "./core";
 import { PList } from "../render/PList";
 import { raw } from "hono/html";
@@ -60,7 +57,7 @@ export async function pList(a: Context) {
         : []
     const pagination = Pagination(page_size_p, total, page, 2)
     const title = raw(await HTMLText(thread.content, 140, true))
-    const thread_lock = [1, 2].includes(thread.land) && (a.get('time') > (thread.show_time + 604800))
+    const thread_lock = [1, 2].includes(thread.land) && (a.get('time') > (thread.sort + 604800))
     data.unshift(thread);
     return a.html(PList(a, { i, page, pagination, data, title, thread_lock }))
 }

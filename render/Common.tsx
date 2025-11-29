@@ -1,7 +1,6 @@
 import { Context } from "hono";
 import { html, raw } from "hono/html";
-import { Props } from "../src/base";
-import { Config } from "../src/core";
+import { Props, Config } from "../src/core";
 
 export async function Header(a: Context, z: Props) {
   const keywords = z.keywords ?? await Config.get<string>(a, 'site_keywords', false)

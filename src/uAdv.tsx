@@ -1,6 +1,4 @@
 import { Context } from "hono";
-import { and, eq, lt, sql } from "drizzle-orm";
-import { DB, User } from "./base";
 import { Auth } from "./core";
 
 export async function uAdv(a: Context) {

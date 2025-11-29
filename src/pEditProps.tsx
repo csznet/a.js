@@ -1,4 +1,4 @@
-import { Props } from "./base";
+import { Props } from "./core";
 
 export interface pEditProps extends Props {
     eid: number,

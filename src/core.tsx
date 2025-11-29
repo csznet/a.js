@@ -2,8 +2,23 @@ import { Context } from "hono";
 import { verify } from "hono/jwt";
 import { getCookie } from "hono/cookie";
 import { HTMLRewriter } from "htmlrewriter";
-import { eq, and, desc, getColumns, sql } from 'drizzle-orm';
-import { DB, Conf, Post, User } from "./base";
+import { connect, Database } from "@tursodatabase/database";
+
+export interface Props {
+    i: any // Omit<typeof User.$inferSelect, "hash" | "salt"> & { last_call: number } | undefined
+    title: string
+    keywords?: string; // SEO 可选关键词
+    description?: string; // SEO 可选描述
+    thread_lock?: boolean
+    head_external?: string
+}
+
+export class DB {
+    public static db: Database
+    static async init() {
+        this.db = await connect("www.db");
+    }
+}
 
 export class Maps {
     // 存储 map 的内存容器
@@ -34,9 +49,9 @@ export class Maps {
 export class Config {
     private static data = Maps.get<string, any>('Config');
     private static void = true;
-    private constructor() { }
     static async init(a: Context) {
-        const configs = await DB(a).select().from(Conf);
+        const sql = DB.db.prepare(`SELECT * FROM conf`);
+        const configs = await sql.all();
         configs.forEach(({ key, value }: { key: string; value: string }) => {
             try {
                 this.data.set(key, value ? JSON.parse(value) : null);
@@ -57,13 +72,10 @@ export class Config {
     static async set(a: Context, key: string, value: any) {
         if (this.void) { await this.init(a); }
         try {
-            await DB(a)
-                .insert(Conf)
-                .values({ key, value })
-                .onConflictDoUpdate({
-                    target: Conf.key,
-                    set: { value }
-                });
+            const sql = DB.db.prepare(`
+                INSERT INTO conf ? VALUES ? ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            `);
+            await sql.run([key, value]);
             this.data.set(key, value);
         } catch (error) {
             console.error(`Failed to set config ${key}:`, error);
@@ -76,27 +88,20 @@ export async function Auth(a: Context) {
     if (!jwt) { return undefined }
     let auth = await verify(jwt, await Config.get<string>(a, 'secret_key')) as { uid: number }
     if (!auth.uid) { return undefined }
-    const message = DB(a).$with(`message`).as(
-        DB(a)
-            .select({
-                show_time: Post.show_time,
-            })
-            .from(Post)
-            .where(and(
-                eq(Post.attr, 0),
-                eq(Post.call_land, -auth.uid),
-            ))
-            .orderBy(desc(Post.attr), desc(Post.call_land), desc(Post.show_time))
-    )
-    const user = (await DB(a)
-        .with(message)
-        .select({
-            ...getColumns(User),
-            last_call: sql<number>`(SELECT COALESCE(show_time,0) FROM ${message})`,
-        })
-        .from(User)
-        .where(eq(User.uid, auth.uid))
-    )?.[0]
+    const sql = DB.db.prepare(`
+        WITH message AS (
+            SELECT sort
+            FROM post
+            WHERE attr = 0
+            AND call = ?
+            ORDER BY attr DESC, call DESC, sort DESC
+            LIMIT 1
+        )
+        SELECT *, (SELECT COALESCE(sort, 0) FROM message) AS last_call
+        FROM user
+        WHERE uid = ?
+    `)
+    const user = await sql.get([auth.uid, auth.uid])
     if (!user) { return undefined }
     const { hash, salt, ...i } = user // 把密码从返回数据中抹除
     return i

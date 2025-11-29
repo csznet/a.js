@@ -1,7 +1,6 @@
 import { Context } from "hono";
 import { eq } from 'drizzle-orm';
-import { DB, User } from "./base";
-import { Auth } from "./core";
+import { DB, Auth } from "./core";
 
 // 清空消息
 export async function mClear(a: Context) {

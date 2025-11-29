@@ -1,6 +1,4 @@
 import { Context } from "hono";
-import { and, eq, gt, inArray, lt, ne, sql } from "drizzle-orm";
-import { DB, Post, User } from "./base";
 import { Auth } from "./core";
 
 export async function uBan(a: Context) {

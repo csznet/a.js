@@ -1,7 +1,4 @@
 import { Context } from "hono";
-import { and, count, desc, eq, getColumns, inArray } from 'drizzle-orm';
-import { alias } from "drizzle-orm/sqlite-core";
-import { DB, Post, User } from "./base";
 import { Auth, Config, Pagination } from "./core";
 import { TList } from "../render/TList";
 import { raw } from "hono/html";
@@ -18,7 +15,7 @@ export async function tList(a: Context) {
         ...(land_comb === null ?
             [user ? eq(Post.user, user) : undefined, eq(Post.land, land)]
             :
-            [eq(Post.call_land, land_comb)]
+            [eq(Post.call, land_comb)]
 
         )
     )
@@ -50,7 +47,7 @@ export async function tList(a: Context) {
                 [user ? desc(Post.user) : undefined, desc(Post.land), desc(Post.time)]
                     .filter(v => v !== undefined) // orderBy 需要自己过滤 undefined
                 :
-                [desc(Post.call_land), desc(Post.show_time)]
+                [desc(Post.call), desc(Post.sort)]
             ))
         .offset((page - 1) * page_size_t)
         .limit(page_size_t)

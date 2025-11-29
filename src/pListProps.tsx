@@ -1,4 +1,4 @@
-import { Post, Props } from "./base";
+import { Props } from "./core";
 
 export interface pListProps extends Props {
     page: number

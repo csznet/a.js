@@ -1,6 +1,4 @@
 import { Context } from "hono";
-import { and, desc, eq, sql } from "drizzle-orm";
-import { DB, Post, User } from "./base";
 import { Auth } from "./core";
 
 export async function pOmit(a: Context) {
@@ -83,7 +81,7 @@ export async function pOmit(a: Context) {
                 .update(Post)
                 .set({
                     refer_pid: sql<number>`(SELECT COALESCE((SELECT pid FROM ${last}), 0))`,
-                    show_time: sql<number>`MIN(COALESCE((SELECT time FROM ${last}),${Post.show_time}),${Post.show_time})`, // 考虑不需要更新show_time的分区?
+                    sort: sql<number>`MIN(COALESCE((SELECT time FROM ${last}),${Post.sort}),${Post.sort})`, // 考虑不需要更新show_time的分区?
                 })
                 .where(eq(Post.pid, -post.land)) // 更新Thread(tid=-land)
             ,
