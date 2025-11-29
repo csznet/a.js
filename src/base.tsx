@@ -1,12 +1,11 @@
 import { Context } from "hono";
-import { drizzle } from "drizzle-orm/libsql";
-import { createClient } from '@libsql/client/node';
+import { drizzle } from 'drizzle-orm/tursodatabase/database';
 import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 export function DB(a: Context) {
     let db = a.get('db');
     if (!db) {
-        db = drizzle(createClient({ url: "file:www.db" }));
+        db = drizzle('www.db');
         a.set('db', db);
     }
     return db;
