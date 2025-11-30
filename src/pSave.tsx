@@ -17,16 +17,11 @@ export async function pSave(a: Context) {
             .prepare(`
                 UPDATE post
                 SET land = CASE WHEN land > 0 THEN ? ELSE land END, content = ?
-                WHERE pid = ?
-                AND attr IN (0,1)
-                `+ ((i.grade < 2) ? `
-                AND user = ?
-                AND sort + 604800 > ?
-                ` : ``) + `
-                RETURNING pid
-            `)  // 回帖不能修改分区 已删除不能编辑 站长和作者都能编辑 7天后禁止编辑
-            .get([land, content, -eid, i.uid, a.get('time')])
-        )?.['pid']) { return a.text('403', 403) }
+                WHERE pid = ? AND attr IN (0,1)
+                `+ ((i.grade < 2) ? `AND user = ? AND sort + 604800 > ?` : ``)
+            )  // 回帖不能修改分区 已删除不能编辑 站长和作者都能编辑 7天后禁止编辑
+            .run([land, content, -eid, i.uid, a.get('time')])
+        ).changes) { return a.text('403', 403) }
         return a.text('ok')
     } else if (eid > 0) { // 回复
         if (a.get('time') - i.last_post < 30) { return a.text('too_fast', 403) } // 防止频繁发帖
@@ -39,7 +34,7 @@ export async function pSave(a: Context) {
                     post.user AS uid,
                     thread.pid AS tid,
                     thread.land AS thread_land,
-                    thread.sort AS thread_sort,
+                    thread.sort AS thread_sort
                 FROM post
                 LEFT JOIN post AS thread
                     ON thread.pid = CASE WHEN post.land > 0 THEN post.pid ELSE -post.land END
@@ -51,9 +46,9 @@ export async function pSave(a: Context) {
         const [content, length] = await HTMLFilter(raw)
         if (length < 3) { return a.text('content_short', 422) }
         const pid = (await DB.db
-            .prepare(`INSERT INTO post (user,call,land,sort,cite,content) VALUES (?,?,?,?,?,?) RETURNING pid`)
-            .get([i.uid, (i.uid == quote.uid) ? -quote.uid : quote.uid, -quote.tid, a.get('time'), quote.pid, content])
-        )?.['pid'] ?? 0 // 如果回复的是自己则隐藏(-quote.uid)
+            .prepare(`INSERT INTO post (user,call,land,sort,cite,content) VALUES (?,?,?,?,?,?)`)
+            .run([i.uid, (i.uid == quote.uid) ? -quote.uid : quote.uid, -quote.tid, a.get('time'), quote.pid, content])
+        ).lastInsertRowid // 如果回复的是自己则隐藏(-quote.uid)
         // 无法发表则报错
         if (!pid) { return a.text('db execute failed', 403) }
         // 回复后顶贴 可奖励积分
@@ -72,9 +67,9 @@ export async function pSave(a: Context) {
         const [content, length] = await HTMLFilter(raw)
         if (length < 3) { return a.text('content_short', 422) }
         const pid = (await DB.db
-            .prepare(`INSERT INTO post (user,land,sort,cite,content) VALUES (?,?,?,?,?) RETURNING pid`)
-            .get([i.uid, land, a.get('time'), a.get('time'), content])
-        )?.['pid'] ?? 0
+            .prepare(`INSERT INTO post (user,land,sort,cite,content) VALUES (?,?,?,?,?)`)
+            .run([i.uid, land, a.get('time'), a.get('time'), content])
+        ).lastInsertRowid
         // 无法发表则报错
         if (!pid) { return a.text('db execute failed', 403) }
         // 奖励积分

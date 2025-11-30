@@ -11,10 +11,9 @@ export async function uBan(a: Context) {
             UPDATE user
             SET grade = CASE WHEN grade != -2 THEN -2 ELSE 0 END
             WHERE uid = ? AND grade < 1
-            RETURNING uid
         `) // 无权封禁贵宾以上用户组
-        .get([uid])
-    )?.['uid']) { return a.text('410:gone', 410) }
+        .run([uid])
+    ).changes) { return a.text('410:gone', 410) }
     // 删除违规者所有帖子 将所有回复设为隐藏
     await DB.db
         .prepare(`

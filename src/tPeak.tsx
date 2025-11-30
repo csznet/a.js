@@ -11,9 +11,8 @@ export async function tPeak(a: Context) {
             UPDATE post
             SET attr = CASE WHEN attr = 0 THEN 1 ELSE 0 END
             WHERE pid = ? AND attr IN (0,1) AND land > 0
-            RETURNING pid
         `) // 必须是thread(land>0)
-        .get([tid])
-    )?.['pid']) { return a.text('410:gone', 410) }
+        .run([tid])
+    ).changes) { return a.text('410:gone', 410) }
     return a.text('ok')
 }

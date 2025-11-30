@@ -11,9 +11,8 @@ export async function uAdv(a: Context) {
             UPDATE user
             SET grade = CASE WHEN grade != -1 THEN -1 ELSE 0 END
             WHERE uid = ? AND grade < 1
-            RETURNING uid
         `) // 无权封禁贵宾以上用户组
-        .get([uid])
-    )?.['uid']) { return a.text('410:gone', 410) }
+        .run([uid])
+    ).changes) { return a.text('410:gone', 410) }
     return a.text('ok')
 }
