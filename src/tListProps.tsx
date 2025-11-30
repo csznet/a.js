@@ -7,6 +7,7 @@ export interface tListProps extends Props {
         name: string | null;
         grade: number | null;
         credits: number | null;
+        last: JSON;
         last_time: number | null;
         last_name: string | null;
         last_grade: number | null;

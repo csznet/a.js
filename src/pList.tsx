@@ -25,13 +25,13 @@ export async function pList(a: Context) {
     if (!thread) { return a.notFound() }
     const page = parseInt(a.req.query('page') ?? '0') || 1
     const page_size_p = await Config.get<number>(a, 'page_size_p') || 20
-    const total = await DB.db
+    const total = (await DB.db
         .prepare(`
             SELECT COUNT(*) AS total
             FROM post
             WHERE attr = 0 AND land = ?
         `)
-        .get([-tid]) ?? 0
+        .get([-tid]))?.['total'] ?? 0
 
     const data = total ? await DB.db
         .prepare(`
@@ -53,7 +53,7 @@ export async function pList(a: Context) {
             WHERE post.attr = 0
                 AND post.land = ?
             ORDER BY post.attr ASC, post.land ASC, post.sort ASC
-            LIMIT ? OFFSET ?;
+            LIMIT ?,?
         `)
         .all([-tid, (page - 1) * page_size_p, page_size_p]) : []
     const pagination = Pagination(page_size_p, total, page, 2)

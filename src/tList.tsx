@@ -8,41 +8,41 @@ export async function tList(a: Context) {
     const page = parseInt(a.req.query('page') ?? '0') || 1
     const land = await Config.get<number>(a, 'land', true) ?? parseInt(a.req.query('land') ?? '0')
     const page_size_t = await Config.get<number>(a, 'page_size_t') || 20
-    const total = await DB.db
+    const total = (await DB.db
         .prepare(`
             SELECT count(*) AS total
             FROM post
             WHERE attr IN (0,1)
             AND `+ (land ? `land` : `call`) + ` = ?
         `)
-        .get([land]) ?? 0
+        .get([land]))?.['total'] ?? 0
     const data = total ? await DB.db
         .prepare(`
-            WITH main_post AS (
-                SELECT *
-                FROM post
-                WHERE post.attr IN (0,1)
-                AND `+ (land ? `post.land` : `post.call`) + ` = ?
-                ORDER BY post.attr DESC, `+ (land ? `post.land` : `post.call`) + ` DESC, post.sort DESC
-                LIMIT ?,?
-            ),
-            last_post AS (
-                SELECT MAX(p.sort) AS lp_time, land
-                FROM post p
-                WHERE p.attr IN (0,1)
+            SELECT *,
+            u.name AS name,
+            u.grade AS grade,
+            u.credits AS credits,
+            (
+                SELECT JSON_OBJECT (
+                    'pid', l.pid,
+                    'time', l.sort,
+                    'name', lu.name,
+                    'grade', lu.grade,
+                    'credits', lu.credits
+                )
+                FROM post l
+                LEFT JOIN user lu ON lu.uid = l.user
+                WHERE l.attr = 0
+                AND l.land = -p.pid
+                ORDER BY l.attr DESC, l.land DESC, l.sort DESC
                 LIMIT 1
-            )
-            SELECT
-                mp.*,
-                user.name AS name,
-                user.grade AS grade,
-                user.credits AS credits,
-                lp.lp_time AS last_time
-            FROM main_post AS mp
-            LEFT JOIN user
-                ON user.uid = mp.user
-            LEFT JOIN last_post AS lp
-                ON lp.land = -mp.pid
+            ) AS last
+            FROM post p
+            LEFT JOIN user u ON u.uid = p.user
+            WHERE p.attr IN (0,1)
+            AND `+ (land ? `p.land` : `p.call`) + ` = ?
+            ORDER BY p.attr DESC, `+ (land ? `p.land` : `p.call`) + ` DESC, p.sort DESC
+            LIMIT ?,?
         `)
         .all([land, (page - 1) * page_size_t, page_size_t]) : []
     const pagination = Pagination(page_size_t, total, page, 2)
