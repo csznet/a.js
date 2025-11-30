@@ -1,10 +1,9 @@
 import { Context } from "hono";
 import { html } from "hono/html";
-import { Base } from "../src/base";
 import { CBegin } from "./CBegin";
 import { CFinish } from "./CFinish";
 
-export function MList(a: Context, z: Base) {
+export function MList(a: Context, z: any) {
     if (!z.i) {
         // 当用户未登录时，自动重定向到登录页面
         return html`

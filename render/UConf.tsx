@@ -1,10 +1,9 @@
 import { Context } from "hono";
 import { html } from "hono/html";
-import { Base } from "../src/base";
 import { CBegin } from "./CBegin";
 import { CFinish } from "./CFinish";
 
-export function UConf(a: Context, z: Base) {
+export function UConf(a: Context, z: any) {
   z.i = z.i! // 非空断言
   let role = "会员";
   switch (z.i.grade) {

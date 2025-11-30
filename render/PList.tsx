@@ -1,11 +1,10 @@
 import { Context } from "hono";
 import { html, raw } from "hono/html";
-import { pListBase } from "../src/base";
 import { HTMLText, URLQuery } from "../src/core";
 import { CBegin } from "./CBegin";
 import { CFinish } from "./CFinish";
 
-export function PList(a: Context, z: pListBase) {
+export function PList(a: Context, z: any) {
     z.head_external = raw(`
         <link href="/quill.snow.css" rel="stylesheet" />
         <style>
@@ -98,7 +97,7 @@ ${CBegin(a, z)}
 
 <div class="container mx-auto max-w-5xl lg:px-0">
     <div class="flex flex-col gap-4">
-        ${z.data.map(async item => html`
+        ${z.data.map(async (item: any) => html`
             <div id="time-${item.call ? item.sort : item.cite}" class="card bg-base-100 shadow-sm">
                 <div class="card-body p-4">
                     ${item.quote_name ? html`
@@ -189,7 +188,7 @@ ${CBegin(a, z)}
     ${z.data.length ? html`
         <div class="flex justify-center mt-8">
             <div class="flex flex-wrap gap-1">
-                ${z.pagination.map(item => html`
+                ${z.pagination.map((item: any) => html`
                     ${item ? html`
                         <a href="/t/${z.data[0].pid}${URLQuery(a, { 'page': item.toString() })}" class="btn btn-sm ${item == z.page ? 'btn-active' : 'btn-ghost'}">${item}</a>
                     ` : html`

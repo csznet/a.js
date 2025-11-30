@@ -1,9 +1,8 @@
 import { Context } from "hono";
 import { html } from "hono/html";
-import { Base } from "../src/base";
 import { Config } from "../src/core";
 
-export async function CFinish(a: Context, z: Base) {
+export async function CFinish(a: Context, z: any) {
   return html`
     </main>
     <footer class="footer footer-center p-4 bg-base-100 text-base-content border-t">

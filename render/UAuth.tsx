@@ -1,11 +1,10 @@
 import { Context } from "hono";
 import { html } from "hono/html";
-import { Base } from "../src/base";
 import { Config } from "../src/core";
 import { CBegin } from "./CBegin";
 import { CFinish } from "./CFinish";
 
-export async function UAuth(a: Context, z: Base) {
+export async function UAuth(a: Context, z: any) {
   return html`
 ${CBegin(a, z)}
 

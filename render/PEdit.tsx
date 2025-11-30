@@ -1,11 +1,10 @@
 import { Context } from "hono";
 import { html, raw } from "hono/html";
-import { pEditBase } from "../src/base";
 import { Config } from "../src/core";
 import { CBegin } from "./CBegin";
 import { CFinish } from "./CFinish";
 
-export async function PEdit(a: Context, z: pEditBase) {
+export async function PEdit(a: Context, z: any) {
     z.head_external = raw(`
         <link href="/quill.snow.css" rel="stylesheet" />
         <style>

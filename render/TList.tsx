@@ -1,11 +1,10 @@
 import { Context } from "hono";
 import { html, raw } from "hono/html";
-import { tListBase } from "../src/base";
 import { HTMLText, URLQuery } from "../src/core";
 import { CBegin } from "./CBegin";
 import { CFinish } from "./CFinish";
 
-export function TList(a: Context, z: tListBase) {
+export function TList(a: Context, z: any) {
     return html`
 ${CBegin(a, z)}
 
@@ -13,7 +12,7 @@ ${CBegin(a, z)}
 
     <!-- 帖子列表 -->
     <div class="lg:px-0">
-        ${z.data.map(async item => html`
+        ${z.data.map(async (item: any) => html`
             <a href="/t/${item.pid}" class="block card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 mb-4">
                 <div class="card-body p-4">
                     <div class="flex flex-wrap items-start gap-4">
@@ -61,7 +60,7 @@ ${CBegin(a, z)}
     ${z.data.length ? html`
         <div class="flex justify-center mt-8">
             <div class="join shadow-sm">
-                ${z.pagination.map(item => html`
+                ${z.pagination.map((item: any) => html`
                     ${item ? html`
                         <a href="/${URLQuery(a, { 'page': item.toString() })}" 
                            class="join-item btn btn-sm ${item == z.page ? 'btn-primary' : 'btn-ghost'}">${item ? item : '...'}</a>
