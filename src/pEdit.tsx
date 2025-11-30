@@ -19,7 +19,7 @@ export async function pEdit(a: Context) {
                 FROM post
                 WHERE pid = ?
                 AND attr IN (0,1)
-                `+ ((i.grade >= 3) ? `` : `AND user = ? AND time + 604800 > ?`)
+                `+ ((i.grade >= 3) ? `` : `AND user = ? AND sort + 604800 > ?`)
             )
             .get(-eid, i.uid, a.get('time'))
         if (!post) { return a.text('403', 403) }

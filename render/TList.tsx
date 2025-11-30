@@ -46,7 +46,7 @@ ${CBegin(a, z)}
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                         </svg>
                                         <span class="truncate">最后回复: <span class="role_${JSON.parse(item.last).grade}">${JSON.parse(item.last).name}</span></span>
-                                        <span class="date whitespace-nowrap flex-shrink-0" time_stamp="${JSON.parse(item.last).time}"></span>
+                                        <span class="date whitespace-nowrap flex-shrink-0" time_stamp="${JSON.parse(item.last).sort}"></span>
                                     </div>
                                 ` : ''}
                             </div>

@@ -17,10 +17,8 @@ export async function pList(a: Context) {
                 '' AS quote_name
             FROM post
             LEFT JOIN user ON post.user = user.uid
-            WHERE post.pid = ?
-            AND post.call = 0
-            AND post.attr IN (0,1)
-        `) // 必须是Thread(call=0)
+            WHERE post.pid = ? AND post.attr IN (0,1) AND post.land > 0
+        `) // 必须是thread(land>0)
         .get([tid])
     if (!thread) { return a.notFound() }
     const page = parseInt(a.req.query('page') ?? '0') || 1
@@ -31,8 +29,8 @@ export async function pList(a: Context) {
             FROM post
             WHERE attr = 0 AND land = ?
         `)
-        .get([-tid]))?.['total'] ?? 0
-
+        .get([-tid])
+    )?.['total'] ?? 0
     const data = total ? await DB.db
         .prepare(`
             SELECT

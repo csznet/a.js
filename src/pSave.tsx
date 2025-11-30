@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import { Auth, HTMLFilter } from "./core";
+import { Auth, DB, HTMLFilter } from "./core";
 
 export async function pSave(a: Context) {
     const i = await Auth(a)
@@ -8,114 +8,87 @@ export async function pSave(a: Context) {
     const eid = parseInt(a.req.param('eid') ?? '0')
     const body = await a.req.formData()
     const land = parseInt(body.get('land')?.toString() ?? '0')
-    const land_comb = [4].includes(land) ? land : 0 // call 合并至聚合版块 还是独立分版
-    if (![1, 2, 3, 4].includes(land)) { return a.text('illegal_land', 403) } // 是否在可选分区内
+    if (![1, 2].includes(land)) { return a.text('illegal_land', 403) } // 是否在可选分区内
     const raw = body.get('content')?.toString() ?? ''
     if (eid < 0) { // 编辑
         const [content, length] = await HTMLFilter(raw)
         if (length < 3) { return a.text('content_short', 422) }
-        const post = (await DB(a)
-            .update(Post)
-            .set({
-                call: sql<number>`CASE WHEN ${Post.call} > 0 THEN ${land_comb} ELSE ${Post.call} END`, // 回帖不能修改引用
-                land: sql<number>`CASE WHEN ${Post.land} > 0 THEN ${land} ELSE ${Post.land} END`, // 回帖不能修改引用
-                content: content,
-            })
-            .where(and(
-                eq(Post.pid, -eid),
-                inArray(Post.attr, [0, 1]), // 已删除的内容不能编辑
-                (i.grade >= 3) ? undefined : eq(Post.user, i.uid), // 站长和作者都能编辑
-                (i.grade >= 3) ? undefined : gt(sql<number>`${Post.time} + 604800`, a.get('time')), // 7天后禁止编辑
-            ))
-            .returning({ pid: Post.pid })
-        )?.[0]
-        if (!post.pid) { return a.text('403', 403) }
+        if (!(await DB.db
+            .prepare(`
+                UPDATE post
+                SET land = CASE WHEN land > 0 THEN ? ELSE land END, content = ?
+                WHERE pid = ?
+                AND attr IN (0,1)
+                `+ ((i.grade < 2) ? `
+                AND user = ?
+                AND sort + 604800 > ?
+                ` : ``) + `
+                RETURNING pid
+            `)  // 回帖不能修改分区 已删除不能编辑 站长和作者都能编辑 7天后禁止编辑
+            .get([land, content, -eid, i.uid, a.get('time')])
+        )?.['pid']) { return a.text('403', 403) }
         return a.text('ok')
     } else if (eid > 0) { // 回复
         if (a.get('time') - i.last_post < 30) { return a.text('too_fast', 403) } // 防止频繁发帖
         if (i.grade == -1 && a.get('time') - i.last_post < 172800) { return a.text('ad_limit_2day', 403) } // 广告用户
-        const Thread = alias(Post, 'Thread')
-        const quote = (await DB(a)
-            .select({
-                pid: Post.pid,
-                uid: Post.user,
-                tid: Thread.pid,
-                thread_land: Thread.land, // 引用所在Thread的land>0
-                thread_show_time: Thread.sort,
-            })
-            .from(Post)
-            .where(and(
-                eq(Post.pid, eid),
-                inArray(Post.attr, [0, 1]), // 已删除的内容不能回复
-            ))
-            .leftJoin(Thread, eq(Thread.pid, sql<number>`CASE WHEN ${Post.land} > 0 THEN ${Post.pid} ELSE -${Post.land} END`))
-        )?.[0]
+        // 找到被引用帖子
+        const quote = await DB.db
+            .prepare(`
+                SELECT
+                    post.pid AS pid,
+                    post.user AS uid,
+                    thread.pid AS tid,
+                    thread.land AS thread_land,
+                    thread.sort AS thread_sort,
+                FROM post
+                LEFT JOIN post AS thread
+                    ON thread.pid = CASE WHEN post.land > 0 THEN post.pid ELSE -post.land END
+                WHERE post.pid = ? AND post.attr IN (0,1)
+            `) // 已删除的内容不能回复
+            .get([eid])
         if (!quote || quote.pid === null) { return a.text('not_found', 403) } // 被回复帖子或主题不存在
-        if ([1, 2].includes(quote.thread_land) && a.get('time') > quote.thread_show_time + 604800) { return a.text('too_old', 429) } // 无热度7天后关闭
+        if ([1, 2].includes(quote.thread_land) && a.get('time') > quote.thread_sort + 604800) { return a.text('too_old', 429) } // 无热度7天后关闭
         const [content, length] = await HTMLFilter(raw)
         if (length < 3) { return a.text('content_short', 422) }
-        const res = (await DB(a).batch([
-            DB(a)
-                .insert(Post)
-                .values({
-                    user: i.uid,
-                    refer_pid: quote.pid,
-                    call: -quote.uid,
-                    sort: (i.uid == quote.uid) ? 0 : a.get('time'), // 如果回复的是自己则隐藏
-                    land: -quote.tid,
-                    time: a.get('time'),
-                    content,
-                })
-                .returning({ pid: Post.pid })
-            ,
-            DB(a)
-                .update(Post)
-                .set({
-                    refer_pid: sql<number>`LAST_INSERT_ROWID()`,
-                    sort: [1, 2, 4].includes(quote.thread_land) ? a.get('time') : Post.sort, // 回复后顶贴的分区
-                })
-                .where(eq(Post.pid, quote.tid))
-            ,
-            DB(a)
-                .update(User)
-                .set({
-                    golds: sql<number>`${User.golds} + 1`,
-                    credits: sql<number>`${User.credits} + 1`,
-                    last_post: a.get('time'),
-                })
-                .where(eq(User.uid, i.uid))
-            ,
-        ]))[0][0]
-        if (!res.pid) { return a.text('db execute failed', 403) }
-        return a.text('ok') //! 返回tid/pid和posts数量
+        const pid = (await DB.db
+            .prepare(`
+                INSERT INTO post
+                SET user = ? , call = ? , land = ? , sort = ? , cite = ? , content = ?
+                RETURNING pid
+            `)  // 如果回复的是自己则隐藏(-quote.uid)
+            .get([i.uid, (i.uid == quote.uid) ? -quote.uid : quote.uid, -quote.tid, a.get('time'), quote.pid, content])
+        )?.['pid'] ?? 0
+        // 无法发表则报错
+        if (!pid) { return a.text('db execute failed', 403) }
+        // 回复后顶贴 可奖励积分
+        if ([1].includes(quote.thread_land)) {
+            await DB.db
+                .prepare(`UPDATE post SET sort = ? WHERE pid = ?`)
+                .run([a.get('time'), quote.tid])
+            await DB.db
+                .prepare(`UPDATE user SET golds = golds+1, credits = credits+1, last_post = ? WHERE uid = ?`)
+                .run([a.get('time'), i.uid])
+        }
+        return a.text(String(pid))
     } else { // 发帖
         if (a.get('time') - i.last_post < 30) { return a.text('too_fast', 403) } // 防止频繁发帖
         if (i.grade == -1 && a.get('time') - i.last_post < 604800) { return a.text('ad_limit_7day', 403) } // 广告用户
         const [content, length] = await HTMLFilter(raw)
         if (length < 3) { return a.text('content_short', 422) }
-        const res = (await DB(a).batch([
-            DB(a)
-                .insert(Post)
-                .values({
-                    user: i.uid,
-                    call: land_comb,
-                    sort: a.get('time'),
-                    land: land,
-                    time: a.get('time'),
-                    content,
-                }).returning({ pid: Post.pid })
-            ,
-            DB(a)
-                .update(User)
-                .set({
-                    golds: sql<number>`${User.golds} + 2`,
-                    credits: sql<number>`${User.credits} + 2`,
-                    last_post: a.get('time'),
-                })
-                .where(eq(User.uid, i.uid))
-            ,
-        ]))[0][0]
-        if (!res.pid) { return a.text('db execute failed', 403) }
-        return a.text(String(res.pid))
+        const pid = (await DB.db
+            .prepare(`
+                INSERT INTO post
+                SET user = ? , land = ? , sort = ? , cite = ? , content = ?
+                RETURNING pid
+            `)
+            .get([i.uid, land, a.get('time'), a.get('time'), content])
+        )?.['pid'] ?? 0
+        // 无法发表则报错
+        if (!pid) { return a.text('db execute failed', 403) }
+        // 奖励积分
+        await DB.db
+            .prepare(`UPDATE user SET golds = golds+2, credits = credits+2, last_post = ? WHERE uid = ?`)
+            .run([a.get('time'), i.uid])
+        return a.text(String(pid))
     }
 }

@@ -115,12 +115,12 @@ async function mFetch() {
         loadBtn.disabled = false;
         
         if (data.length) {
-            sort = data.at(-1).post_time;
+            sort = data.at(-1).post_sort;
             messageCount += data.length;
             
             // 分离新消息和已读消息
-            const newMessages = data.filter(row => row.post_time > last_read);
-            const readMessages = data.filter(row => row.post_time <= last_read);
+            const newMessages = data.filter(row => row.post_sort > last_read);
+            const readMessages = data.filter(row => row.post_sort <= last_read);
 
             // 如果是第一页加载且有未读消息，显示未读消息标题
             if (messageCount === data.length && newMessages.length > 0) {
@@ -171,7 +171,7 @@ async function mFetch() {
 
 // 添加消息卡片函数
 function addMessageCard(row, list, messageType) {
-    const timeAgo = getTimeAgo(row.post_time);
+    const timeAgo = getTimeAgo(row.post_sort);
     const card = document.createElement('div');
     
     // 为已读消息添加特殊样式
@@ -229,7 +229,7 @@ function addMessageCard(row, list, messageType) {
     }
     
     const link = document.createElement('a');
-    link.href = '/p?tid=' + row.post_tid + '&time=' + row.post_time;
+    link.href = '/p?tid=' + row.post_tid + '&sort=' + row.post_sort;
     link.className = 'group';
     link.target = '_blank';
     

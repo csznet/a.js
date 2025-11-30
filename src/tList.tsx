@@ -15,7 +15,8 @@ export async function tList(a: Context) {
             WHERE attr IN (0,1)
             AND `+ (land ? `land` : `call`) + ` = ?
         `)
-        .get([land]))?.['total'] ?? 0
+        .get([land])
+    )?.['total'] ?? 0
     const data = total ? await DB.db
         .prepare(`
             SELECT *,
@@ -25,7 +26,7 @@ export async function tList(a: Context) {
             (
                 SELECT JSON_OBJECT (
                     'pid', l.pid,
-                    'time', l.sort,
+                    'sort', l.sort,
                     'name', lu.name,
                     'grade', lu.grade,
                     'credits', lu.credits

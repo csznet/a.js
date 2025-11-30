@@ -1,99 +1,43 @@
 import { Context } from "hono";
-import { Auth } from "./core";
+import { Auth, DB } from "./core";
 
 export async function pOmit(a: Context) {
     const i = await Auth(a)
     if (!i) { return a.text('401', 401) }
     const pid = -parseInt(a.req.param('eid') ?? '0')
     // 被删的帖子
-    const post = (await DB(a)
-        .select({
-            pid: Post.pid,
-            user: Post.user,
-            refer_pid: Post.refer_pid,
-            land: Post.land,
-        })
-        .from(Post)
-        .where(and(
-            eq(Post.pid, pid),
-            (i.grade >= 2) ? undefined : eq(Post.user, i.uid), // 管理和作者都能删除
-        ))
-    )?.[0]
+    const post = await DB.db
+        .prepare(`SELECT pid, user, land FROM post WHERE pid = ?` + ((i.grade < 2) ? `AND user = ?` : ``))
+        .get(pid, i.uid)
     // 如果无权限或帖子不存在则报错
     if (!post) { return a.text('410:gone', 410) }
-    if (post.land > 0) {
-        // 如果删的是Thread
-        await DB(a).batch([
-            DB(a)
-                .update(Post)
-                .set({
-                    attr: 3, // 主题自身被删 类型改为3
-                })
-                .where(eq(Post.pid, post.pid))
-            ,
-            DB(a)
-                .update(Post)
-                .set({
-                    attr: 1, // 主题被删 公开回复 类型改为1
-                })
-                .where(and(
-                    eq(Post.attr, 0),
-                    eq(Post.land, -post.pid), // 隐藏Thread(tid=pid=-land)下所有回复
-                ))
-            ,
-            DB(a)
-                .update(User)
-                .set({
-                    golds: sql<number>`${User.golds} - 2`,
-                    credits: sql<number>`${User.credits} - 2`,
-                })
-                .where(eq(User.uid, post.user))
-            ,
-        ])
-    } else {
-        // 如果删的是Post 如果所有回复都删了会返回null
-        const last = DB(a).$with('last').as(
-            DB(a)
-                .select({
-                    pid: Post.pid,
-                    time: Post.time,
-                })
-                .from(Post)
-                .where(and(
-                    // attr
-                    eq(Post.attr, 0),
-                    // land
-                    eq(Post.land, post.land), // 找到同一主题下的所有帖子 land本来就<0所以不用正负转换
-                ))
-                .orderBy(desc(Post.attr), desc(Post.land), desc(Post.time))
-                .limit(1)
-        )
-        await DB(a).batch([
-            DB(a)
-                .update(Post)
-                .set({
-                    attr: 3,
-                })
-                .where(eq(Post.pid, post.pid))
-            ,
-            DB(a) // 注意逻辑顺序 必须先标记删除 再获取最后回复
-                .with(last)
-                .update(Post)
-                .set({
-                    refer_pid: sql<number>`(SELECT COALESCE((SELECT pid FROM ${last}), 0))`,
-                    sort: sql<number>`MIN(COALESCE((SELECT time FROM ${last}),${Post.sort}),${Post.sort})`, // 考虑不需要更新show_time的分区?
-                })
-                .where(eq(Post.pid, -post.land)) // 更新Thread(tid=-land)
-            ,
-            DB(a)
-                .update(User)
-                .set({
-                    golds: sql<number>`${User.golds} - 1`,
-                    credits: sql<number>`${User.credits} - 1`,
-                })
-                .where(eq(User.uid, post.user))
-            ,
-        ])
+    if (post.land > 0) { // 如果删的是thread
+        // 主题自身被删 类型改为3
+        await DB.db.prepare(`UPDATE post SET attr = 3 WHERE pid = ?`).run(post.pid);
+        // 正常状态回复 类型改为1 隐藏Thread(tid=pid=-land)下所有回复
+        await DB.db.prepare(`UPDATE post SET attr = 1 WHERE attr = 0 AND land = ?`).run(-post.pid);
+        // 扣除积分
+        await DB.db.prepare(`UPDATE user SET user SET golds = golds-2, credits = credits-2 WHERE uid = ?`).run(post.user)
+    } else { // 如果删的是post
+        // 主题自身被删 类型改为3
+        await DB.db.prepare(`UPDATE post SET attr = 3 WHERE pid = ?`).run(post.pid);
+        // 修改话题时间 注意逻辑顺序 必须先标记删除 再获取最后回复
+        await DB.db
+            .prepare(`
+                WITH last AS (
+                    SELECT pid, sort
+                    FROM post
+                    WHERE attr = 0 AND land = ?
+                    ORDER BY attr DESC, land DESC, sort DESC
+                    LIMIT 1
+                )
+                UPDATE post
+                SET post.sort = MIN(COALESCE((SELECT last.sort FROM last),post.sort),post.sort)
+                WHERE post.pid = ?
+            `)
+            .run([post.land, -post.land]) // post自身land本来就<0所以不用正负转换
+        // 扣除积分
+        await DB.db.prepare(`UPDATE user SET user SET golds = golds-1, credits = credits-1 WHERE uid = ?`).run(post.user)
     }
     return a.text('ok')
 }

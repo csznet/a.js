@@ -5,14 +5,13 @@ export async function mData(a: Context) {
     const i = await Auth(a)
     if (!i) { return a.text('401', 401) }
     const sort = parseInt(a.req.query('sort') ?? '0')
-
     // 因为 message 都是 post 所以 tid 是 -land
     const data = await DB.db
         .prepare(`
             SELECT
                 post.pid AS post_pid,
                 -post.land AS post_tid,
-                post.time AS post_time,
+                post.sort AS post_sort,
                 post.content AS post_content,
                 user.uid AS post_uid,
                 user.name AS post_name,
@@ -25,7 +24,7 @@ export async function mData(a: Context) {
             ORDER BY post.attr DESC, post.call DESC, post.sort DESC
             LIMIT 10
         `)
-        .all([i.uid, sort]) //? 传入sort但构造句没有时
+        .all([i.uid, sort])
     await Promise.all(data.map(async function (row: { quote_content: string | null | undefined; post_content: string | null | undefined; }) {
         row.quote_content = await HTMLText(row.quote_content, 300);
         row.post_content = await HTMLText(row.post_content, 300);
