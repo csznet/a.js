@@ -52,7 +52,7 @@ export async function pList(a: Context) {
                 ON quote_user.uid = quote_post.user
             WHERE post.attr = 0
                 AND post.land = ?
-            ORDER BY post.attr ASC, post.land ASC, post.time ASC
+            ORDER BY post.attr ASC, post.land ASC, post.sort ASC
             LIMIT ? OFFSET ?;
         `)
         .all([-tid, (page - 1) * page_size_p, page_size_p]) : []
