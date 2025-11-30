@@ -14,7 +14,7 @@ ${CBegin(a, z)}
         <h2 class="text-center text-2xl/9 font-bold tracking-tight text-gray-900">${await Config.get<string>(a, 'site_name', false)}</h2>
       </div>
       <div>
-        <input type="text" name="acct" placeholder="邮箱" required class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 mb-2">
+        <input type="text" name="cert" placeholder="邮箱" required class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 mb-2">
         <input type="password" name="pass" placeholder="密码" required class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6">
       </div>
       <div class="text-center">
@@ -29,7 +29,7 @@ ${CBegin(a, z)}
     async function auth(form) {
         event.preventDefault();
         if (event.submitter.name == "login") { // 登录
-          if (!form.querySelector('input[name="acct"]').value) {
+          if (!form.querySelector('input[name="cert"]').value) {
             alert("邮箱地址为空");
             return;
           }
@@ -38,13 +38,13 @@ ${CBegin(a, z)}
             return;
           }
         } else { // 注册
-          if (!form.querySelector('input[name="acct"]').value) {
+          if (!form.querySelector('input[name="cert"]').value) {
             alert("邮箱地址为空");
             return;
           }
           if (
             !/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$/.test(
-              form.querySelector('input[name="acct"]').value
+              form.querySelector('input[name="cert"]').value
             )
           ) {
             alert("邮箱格式错误");
@@ -73,8 +73,8 @@ ${CBegin(a, z)}
           if (text === "no user") {
             // 用户不存在 进行注册操作
             const data = new FormData(form);
-            if (!data.get('acct')) {alert('邮箱地址为空');return;}
-            if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(data.get('acct'))) {alert('邮箱格式错误');return;}
+            if (!data.get('cert')) {alert('邮箱地址为空');return;}
+            if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(data.get('cert'))) {alert('邮箱格式错误');return;}
             data.set('pass', md5(data.get('pass')));
             if ((await fetch(new Request('/register', {method: 'POST', body: data}))).ok) {
                 window.location='/i';

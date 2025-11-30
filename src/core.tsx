@@ -63,11 +63,11 @@ export class Config {
         if (this.void) { await this.init(a); }
         try {
             await DB.db
-                .prepare(`INSERT INTO conf ? VALUES ? ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
-                .run([key, value]);
-            this.data.set(key, value);
+                .prepare(`INSERT INTO conf (?) VALUES (?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
+                .run([key, value])
+            this.data.set(key, value)
         } catch (error) {
-            console.error(`Failed to set config ${key}:`, error);
+            console.error(`Failed to set config ${key}:`, error)
         }
     }
 }

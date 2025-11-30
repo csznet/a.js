@@ -2,21 +2,16 @@ import { Context } from "hono";
 import { sign } from "hono/jwt";
 import { setCookie } from "hono/cookie";
 import { Md5 } from "ts-md5";
-import { Config } from "./core";
-
+import { Config, DB } from "./core";
 
 export async function uLogin(a: Context) {
     const body = await a.req.formData();
-    const acct = body.get('acct')?.toString().toLowerCase() // 登录凭证 邮箱 或 昵称
+    const cert = body.get('cert')?.toString().toLowerCase() // 登录凭证 邮箱 或 昵称
     const pass = body.get('pass')?.toString();
-    if (!acct || !pass) {
+    if (!cert || !pass) {
         return a.text('401', 401);
     }
-    const user = (await DB(a)
-        .select()
-        .from(User)
-        .where(or(eq(User.mail, acct), eq(User.name, acct)))
-    )?.[0];
+    const user = await DB.db.prepare(`SELECT * FROM user WHERE mail = ? OR name = ?`).get([cert, cert])
     if (!user) {
         return a.text('no user', 401);
     }
