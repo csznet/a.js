@@ -79,16 +79,16 @@ export async function Auth(a: Context) {
     if (!auth.uid) { return undefined }
     const user = await DB.db
         .prepare(`
-            WITH message AS (
-                SELECT sort
-                FROM post
-                WHERE attr = 0 AND call = ?
-                ORDER BY attr DESC, call DESC, sort DESC
-                LIMIT 1
-            )
-            SELECT *, (SELECT COALESCE(sort, 0) FROM message) AS last_call
-            FROM user
-            WHERE uid = ?
+            SELECT *,
+                COALESCE((
+                    SELECT p.sort 
+                    FROM post p
+                    WHERE p.attr = 0 AND p.call = u.uid
+                    ORDER BY p.attr DESC, p.call DESC, p.sort DESC
+                    LIMIT 1
+                ), 0) last_call
+            FROM user u
+            WHERE u.uid = ?
         `)
         .get([auth.uid, auth.uid])
     if (!user) { return undefined }
